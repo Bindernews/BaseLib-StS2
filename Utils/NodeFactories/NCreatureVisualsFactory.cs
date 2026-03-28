@@ -22,7 +22,7 @@ internal class NCreatureVisualsFactory : NodeFactory<NCreatureVisuals>
         switch (resource)
         {
             case Texture2D img:
-                MainFile.Logger.Info("Creating NCreatureVisuals from Texture2D");
+                BaseLibMain.Logger.Info("Creating NCreatureVisuals from Texture2D");
                 
                 var imgSize = img.GetSize();
                 var boundsSize = img.GetSize() * 1.1f;
@@ -56,7 +56,7 @@ internal class NCreatureVisualsFactory : NodeFactory<NCreatureVisuals>
                 target.AddUnique(bounds, "Bounds");
                 break;
             case "%Visuals":
-                MainFile.Logger.Warn("'Visuals' node must be provided for NCreatureVisuals");
+                BaseLibMain.Logger.Warn("'Visuals' node must be provided for NCreatureVisuals");
                 break;
             case "%IntentPos":
                 bounds = target.GetNode<Control>("%Bounds");

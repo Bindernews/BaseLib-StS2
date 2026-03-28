@@ -70,7 +70,7 @@ public class CustomPiles
     {
         if (!CustomPileProviders.ContainsKey(pileType)) return null;
 
-        MainFile.Logger.Info("Looking for NCard in Custom Pile!");
+        BaseLibMain.Logger.Info("Looking for NCard in Custom Pile!");
         var pile = GetCustomPile(card.Owner.PlayerCombatState, pileType);
 
         return pile?.GetNCard(card);

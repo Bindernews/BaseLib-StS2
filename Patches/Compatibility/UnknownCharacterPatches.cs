@@ -29,7 +29,7 @@ public class UnknownCharacterPatches
                 {
                     if (player.CharacterId == null || ModelDb.GetByIdOrNull<CharacterModel>(player.CharacterId) == null)
                     {
-                        MainFile.Logger.Info($"Ignoring run with unknown character {player.CharacterId}");
+                        BaseLibMain.Logger.Info($"Ignoring run with unknown character {player.CharacterId}");
                         __result = false;
                         return;
                     }
@@ -54,7 +54,7 @@ public class UnknownCharacterPatches
                 {
                     if (player.CharacterId == null || ModelDb.GetByIdOrNull<CharacterModel>(player.CharacterId) == null)
                     {
-                        MainFile.Logger.Info($"Ignoring co-op run with unknown character {player.CharacterId}");
+                        BaseLibMain.Logger.Info($"Ignoring co-op run with unknown character {player.CharacterId}");
                         __result = false;
                         return;
                     }

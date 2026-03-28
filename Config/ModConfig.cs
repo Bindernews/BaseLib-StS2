@@ -62,14 +62,14 @@ public abstract partial class ModConfig
         /// </summary>
         public static void Warn(string message, bool showInGui = false)
         {
-            MainFile.Logger.Warn(message);
+            BaseLibMain.Logger.Warn(message);
             if (showInGui && !PendingUserMessages.Contains(message)) PendingUserMessages.Add(message);
         }
 
         /// <inheritdoc cref="Warn" />
         public static void Error(string message, bool showInGui = true)
         {
-            MainFile.Logger.Error(message);
+            BaseLibMain.Logger.Error(message);
             if (showInGui && !PendingUserMessages.Contains(message)) PendingUserMessages.Add(message);
         }
     }

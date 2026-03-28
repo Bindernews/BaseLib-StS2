@@ -20,7 +20,7 @@ public class SimpleModConfig : ModConfig
     /// </summary>
     public override void SetupConfigUI(Control optionContainer)
     {
-        MainFile.Logger.Info($"Setting up SimpleModConfig {GetType().FullName}");
+        BaseLibMain.Logger.Info($"Setting up SimpleModConfig {GetType().FullName}");
         GenerateOptionsForAllProperties(optionContainer);
         AddRestoreDefaultsButton(optionContainer);
     }
@@ -195,7 +195,7 @@ public class SimpleModConfig : ModConfig
             }
             catch (Exception e)
             {
-                MainFile.Logger.Error($"Error executing [ConfigButton] method {method.Name}: {e.Message}");
+                BaseLibMain.Logger.Error($"Error executing [ConfigButton] method {method.Name}: {e.Message}");
 
                 // no return; we still need to call ConfigReloaded in case the method changed something
             }
@@ -265,7 +265,7 @@ public class SimpleModConfig : ModConfig
 
         foreach (var member in filteredMembers)
         {
-            MainFile.Logger.Info("member: " + member.Name);
+            BaseLibMain.Logger.Info("member: " + member.Name);
         }
 
         for (var i = 0; i < filteredMembers.Count; i++)
@@ -307,7 +307,7 @@ public class SimpleModConfig : ModConfig
             }
             catch (NotSupportedException ex)
             {
-                MainFile.Logger.Error($"Not creating UI for unsupported property '{member.Name}': {ex.Message}");
+                BaseLibMain.Logger.Error($"Not creating UI for unsupported property '{member.Name}': {ex.Message}");
                 continue;
             }
 

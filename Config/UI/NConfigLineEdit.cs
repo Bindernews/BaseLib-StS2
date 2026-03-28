@@ -84,7 +84,7 @@ public partial class NConfigLineEdit : NMegaLineEdit
 
         if (!ValidateString(propValue))
         {
-            MainFile.Logger.Warn($"{_property.Name}: stored value '{propValue}' violates the validation regex; resetting value to default");
+            BaseLibMain.Logger.Warn($"{_property.Name}: stored value '{propValue}' violates the validation regex; resetting value to default");
             propValue = _config?.GetDefaultValue<string>(_property.Name) ?? "";
             _property.SetValue(null, propValue);
             _config?.Changed();

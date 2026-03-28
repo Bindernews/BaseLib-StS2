@@ -6,7 +6,7 @@ using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Powers;
 using MegaCrit.Sts2.Core.Models;
 
-namespace BaseLib.Patches.Features;
+namespace BaseLib.Patches.Utils;
 
 /// <summary>
 /// If player applies a debuff to self or ally before turn ends (not from curse cards like doubt),

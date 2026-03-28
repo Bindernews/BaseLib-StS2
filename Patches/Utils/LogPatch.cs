@@ -6,7 +6,7 @@ using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Nodes.Screens.MainMenu;
 
-namespace BaseLib.Patches.Features;
+namespace BaseLib.Patches.Utils;
 
 [HarmonyPatch(typeof(ConsoleLogPrinter), nameof(ConsoleLogPrinter.Print))]
 class LogPatch

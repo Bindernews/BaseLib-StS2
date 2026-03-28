@@ -128,7 +128,7 @@ public abstract class CustomAncientModel : AncientEventModel, ICustomModel
             CharacterDialogues = characterDialogues,
             AgnosticDialogues = AncientDialogueUtil.GetDialoguesForKey("ancients", "ANY", log)
         };
-        if (log != null) MainFile.Logger.Info(log.ToString());
+        if (log != null) BaseLibMain.Logger.Info(log.ToString());
         return dialogueSet;
     }
 }

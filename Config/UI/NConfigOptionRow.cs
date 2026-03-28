@@ -70,7 +70,7 @@ public partial class NConfigOptionRow : MarginContainer
 
         if (!LocString.Exists("settings_ui", descriptionEntryKey))
         {
-            MainFile.Logger.Warn($"{descriptionEntryKey} not found in settings_ui.json; skipping HoverTip.\n" +
+            BaseLibMain.Logger.Warn($"{descriptionEntryKey} not found in settings_ui.json; skipping HoverTip.\n" +
                                  $"Ensure your .pck is up to date and contains e.g. YourMod/localization/eng/settings_ui.json with an entry for \"{descriptionEntryKey}\".");
             return;
         }

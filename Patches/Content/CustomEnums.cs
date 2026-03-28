@@ -106,7 +106,7 @@ public static class CustomEnums
                 }
             }
             
-            MainFile.Logger.Info($"Generated KeyGenerator for enum {t.FullName} with starting value {_nextKey}");
+            BaseLibMain.Logger.Info($"Generated KeyGenerator for enum {t.FullName} with starting value {_nextKey}");
         }
 
         public object GetKey()

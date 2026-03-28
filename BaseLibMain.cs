@@ -9,7 +9,7 @@ using MegaCrit.Sts2.Core.Modding;
 namespace BaseLib;
 
 [ModInitializer(nameof(Initialize))]
-public static class MainFile
+public static class BaseLibMain
 {
     public const string ModId = "BaseLib";
 

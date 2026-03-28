@@ -13,7 +13,7 @@ public class MissingLocPatch
         if (__instance.HasEntry(key))
             return true;
 
-        MainFile.Logger.Warn($"GetLocString: Key '{key}' not found in table '{____name}'");
+        BaseLibMain.Logger.Warn($"GetLocString: Key '{key}' not found in table '{____name}'");
         __result = new LocString(____name, key);
         return false;
     }
@@ -25,7 +25,7 @@ public class MissingLocPatch
         if (__instance.HasEntry(key))
             return true;
 
-        MainFile.Logger.Warn($"GetRawText: Key '{key}' not found in table '{____name}'");
+        BaseLibMain.Logger.Warn($"GetRawText: Key '{key}' not found in table '{____name}'");
         __result = $"{____name}.{key}";
         return false;
     }

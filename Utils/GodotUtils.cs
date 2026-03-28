@@ -34,7 +34,7 @@ public static class GodotUtils
         var missing = TransferNodes(obj, target, uniqueNames);
         if (missing.Count > 0)
         {
-            MainFile.Logger.Warn($"Created {target.GetType().FullName} missing required children {string.Join(" ", missing)}");
+            BaseLibMain.Logger.Warn($"Created {target.GetType().FullName} missing required children {string.Join(" ", missing)}");
         }
         return obj;
     }

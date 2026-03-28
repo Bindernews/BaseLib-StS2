@@ -213,10 +213,10 @@ class EnergyCounterPatch {
         }
         catch (Exception e)
         {
-            MainFile.Logger.Error($"Failed to create custom energy counter for {player.Character.Id}: {e}");
+            BaseLibMain.Logger.Error($"Failed to create custom energy counter for {player.Character.Id}: {e}");
         }
 
-        MainFile.Logger.Info($"Player {model.GetType().Name} does not have a custom NEnergyCounter.");
+        BaseLibMain.Logger.Info($"Player {model.GetType().Name} does not have a custom NEnergyCounter.");
 
         return true;
     }

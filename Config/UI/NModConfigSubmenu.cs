@@ -195,7 +195,7 @@ public partial class NModConfigSubmenu : NSubmenu
                                             "This is either because the mod set something up incorrectly, or a " +
                                             "compatibility issue.\n" +
                                             "Try updating BaseLib and the mod in question, if newer versions exist.");
-            MainFile.Logger.Error(e.ToString());
+            BaseLibMain.Logger.Error(e.ToString());
             _stack.Pop();
             return;
         }
@@ -218,7 +218,7 @@ public partial class NModConfigSubmenu : NSubmenu
         {
             ModConfig.ModConfigLogger.Error("An error occurred while loading the mod config screen.\n" +
                                             "Please report a bug at:\nhttps://github.com/Alchyr/BaseLib-StS2");
-            MainFile.Logger.Error(e.ToString());
+            BaseLibMain.Logger.Error(e.ToString());
             _stack.Pop();
         }
     }

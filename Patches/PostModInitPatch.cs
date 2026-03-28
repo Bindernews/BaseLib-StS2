@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using BaseLib.Extensions;
 using BaseLib.Patches.Features;
+using BaseLib.Patches.Utils;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Localization;
@@ -19,12 +20,12 @@ class PostModInitPatch
 
         ModInterop interop = new();
         
-        foreach (var t in ReflectionHelper.ModTypes)
+        foreach (var type in ReflectionHelper.ModTypes)
         {
-            interop.ProcessType(harmony, t);
+            interop.ProcessType(harmony, type);
 
             bool hasSavedProperty = false;
-            foreach (var prop in t.GetProperties())
+            foreach (var prop in type.GetProperties())
             {
                 var savedPropertyAttr = prop.GetCustomAttribute<SavedPropertyAttribute>();
                 if (savedPropertyAttr == null) continue;
@@ -35,17 +36,25 @@ class PostModInitPatch
                     var prefix = prop.DeclaringType.GetRootNamespace() + "_";
                     if (prop.Name.Length < 16 && !prop.Name.StartsWith(prefix))
                     {
-                        MainFile.Logger.Warn($"Recommended to add a prefix such as \"{prefix}\" to SavedProperty {prop.Name} for compatibility.");
+                        BaseLibMain.Logger.Warn($"Recommended to add a prefix such as \"{prefix}\" to SavedProperty {prop.Name} for compatibility.");
                     }
                 }
                 
                 hasSavedProperty = true;
             }
 
+            foreach (var field in type.GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                SavedSpireFieldPatch.CheckSavedSpireField(field);
+            }
+
             if (hasSavedProperty)
             {
-                SavedPropertiesTypeCache.InjectTypeIntoCache(t);
+                SavedPropertiesTypeCache.InjectTypeIntoCache(type);
             }
         }
+
+        SavedSpireFieldPatch.AddFieldsSorted();
     }
+
 }

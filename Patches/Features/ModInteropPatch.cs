@@ -17,7 +17,7 @@ internal class ModInterop
     private readonly Dictionary<string, Assembly?> _loadedIds;
     internal ModInterop()
     {
-        MainFile.Logger.Info("Generating interop methods and properties");
+        BaseLibMain.Logger.Info("Generating interop methods and properties");
         
         _loadedIds = ModManager.GetLoadedMods()
             .Where(mod => mod.manifest != null && mod.assembly != null)
@@ -32,11 +32,11 @@ internal class ModInterop
         if (!_loadedIds.TryGetValue(modInterop.ModId, out var assembly)) return;
         if (assembly == null)
         {
-            MainFile.Logger.Error($"Cannot generate interop for mod {modInterop.ModId}, assembly not found");
+            BaseLibMain.Logger.Error($"Cannot generate interop for mod {modInterop.ModId}, assembly not found");
             return;
         }
             
-        MainFile.Logger.Info($"Interop type {t} for mod {modInterop.ModId}");
+        BaseLibMain.Logger.Info($"Interop type {t} for mod {modInterop.ModId}");
 
         var members = t.GetMembers(ValidMemberFlags);
 
@@ -96,12 +96,12 @@ internal class ModInterop
                 harmony.Patch(constructor, transpiler: new HarmonyMethod(QuickTranspiler.Transpile));
             }
 
-            MainFile.Logger.Info($"Generated interop type {type.FullName}");
+            BaseLibMain.Logger.Info($"Generated interop type {type.FullName}");
             return GenInteropMembers(type.GetMembers(ValidMemberFlags), harmony, targetAssembly, targetName, false);
         }
         catch (Exception e)
         {
-            MainFile.Logger.Info(e.ToString());
+            BaseLibMain.Logger.Info(e.ToString());
             return false;
         }
     }
@@ -176,11 +176,11 @@ internal class ModInterop
 
             QuickTranspiler.Insert = [..loadParams, new CodeInstruction(OpCodes.Call, targetMethod)];
             harmony.Patch(method, transpiler: new HarmonyMethod(QuickTranspiler.Transpile));
-            MainFile.Logger.Info($"Generated interop method {method.Name}");
+            BaseLibMain.Logger.Info($"Generated interop method {method.Name}");
         }
         catch (Exception e)
         {
-            MainFile.Logger.Info(e.ToString());
+            BaseLibMain.Logger.Info(e.ToString());
             return false;
         }
 
@@ -255,7 +255,7 @@ internal class ModInterop
                     harmony.Patch(property.GetMethod, transpiler: new HarmonyMethod(QuickTranspiler.Transpile));
                 }
 
-                MainFile.Logger.Info($"Generated interop property {property.Name}");
+                BaseLibMain.Logger.Info($"Generated interop property {property.Name}");
                 return true;
             }
 
@@ -302,7 +302,7 @@ internal class ModInterop
                         new CodeInstruction(OpCodes.Ldfld, targetField)];
                 }
                 harmony.Patch(property.GetMethod, transpiler: new HarmonyMethod(QuickTranspiler.Transpile));
-                MainFile.Logger.Info($"Generated interop field property {property.Name}");
+                BaseLibMain.Logger.Info($"Generated interop field property {property.Name}");
                 return true;
             }
 
@@ -310,7 +310,7 @@ internal class ModInterop
         }
         catch (Exception e)
         {
-            MainFile.Logger.Info(e.ToString());
+            BaseLibMain.Logger.Info(e.ToString());
             return false;
         }
     }

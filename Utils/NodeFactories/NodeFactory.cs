@@ -16,13 +16,13 @@ public abstract class NodeFactory<T> : NodeFactory where T : Node, new()
     protected NodeFactory(IEnumerable<INodeInfo> namedNodes) : base(namedNodes)
     {
         _instance = this;
-        MainFile.Logger.Info($"Created node factory for {typeof(T).Name}.");
+        BaseLibMain.Logger.Info($"Created node factory for {typeof(T).Name}.");
     }
 
     public static T CreateFromResource(object resource)
     {
         if (_instance == null) throw new Exception($"No node factory found for type '{typeof(T).FullName}'");
-        MainFile.Logger.Info($"Creating {typeof(T).Name} from resource {resource.GetType().Name}");
+        BaseLibMain.Logger.Info($"Creating {typeof(T).Name} from resource {resource.GetType().Name}");
         var n = _instance.CreateBareFromResource(resource);
         _instance.ConvertScene(n, null);
         return n;
@@ -49,7 +49,7 @@ public abstract class NodeFactory<T> : NodeFactory where T : Node, new()
     {
         if (_instance == null) throw new Exception($"No node factory found for type '{typeof(T).FullName}'");
         
-        MainFile.Logger.Info($"Creating {typeof(T).Name} from scene {scene.ResourcePath}");
+        BaseLibMain.Logger.Info($"Creating {typeof(T).Name} from scene {scene.ResourcePath}");
         var n = scene.Instantiate();
         if (n is T t) return t;
         

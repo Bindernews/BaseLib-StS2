@@ -12,7 +12,7 @@ class AddAncientDialogues
     [HarmonyPrefix]
     static void AddCharacterDefinedInteractions(AncientDialogueSet __instance, string ancientEntry)
     {
-        MainFile.Logger.Info($"Checking for additional interactions with {ancientEntry}");
+        BaseLibMain.Logger.Info($"Checking for additional interactions with {ancientEntry}");
         var characterDialogues = __instance.CharacterDialogues;
         
         foreach (var character in ModelDb.AllCharacters)
@@ -26,7 +26,7 @@ class AddAncientDialogues
             if (newDialogues.Count > 0)
             {
                 characterDialogues[character.Id.Entry] = [..currentDialogues, ..newDialogues];
-                MainFile.Logger.Info($"Found {newDialogues.Count} additional dialogues for {ancientEntry} with {character.Id.Entry}, total {characterDialogues[character.Id.Entry].Count}");
+                BaseLibMain.Logger.Info($"Found {newDialogues.Count} additional dialogues for {ancientEntry} with {character.Id.Entry}, total {characterDialogues[character.Id.Entry].Count}");
             }
         }
     }
