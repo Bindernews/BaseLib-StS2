@@ -84,7 +84,7 @@ public abstract class CustomAncientModel : AncientEventModel, ICustomModel, ILoc
     /******************    Assets    ******************/
 
     /// <summary>
-    /// Override to load custom event scene.
+    /// Overridden to load custom event scene.
     /// </summary>
     /// <param name="runState"></param>
     /// <returns></returns>
@@ -102,8 +102,8 @@ public abstract class CustomAncientModel : AncientEventModel, ICustomModel, ILoc
     public virtual string? CustomMapIconPath => null;
     public virtual string? CustomMapIconOutlinePath => null;
 
-    public virtual Texture2D? CustomRunHistoryIcon => null;
-    public virtual Texture2D? CustomRunHistoryIconOutline => null;
+    public virtual string? CustomRunHistoryIconPath => null;
+    public virtual string? CustomRunHistoryIconOutlinePath => null;
 
 
     /****************** Localization ******************/
@@ -128,10 +128,24 @@ public abstract class CustomAncientModel : AncientEventModel, ICustomModel, ILoc
         {
             FirstVisitEverDialogue = firstVisit,
             CharacterDialogues = characterDialogues,
-            AgnosticDialogues = AncientDialogueUtil.GetDialoguesForKey("ancients", "ANY", log)
+            AgnosticDialogues = AncientDialogueUtil.GetDialoguesForKey("ancients", AncientDialogueUtil.BaseLocKey(Id.Entry, "ANY"), log)
         };
         if (log != null) BaseLibMain.Logger.Info(log.ToString());
         return dialogueSet;
+    }
+}
+
+[HarmonyPatch(typeof(EventModel), "BackgroundScenePath", MethodType.Getter)]
+class BackgroundScenePath
+{
+    [HarmonyPrefix]
+    static bool Custom(AncientEventModel __instance, ref string? __result)
+    {
+        if (__instance is not CustomAncientModel custom)
+            return true;
+
+        __result = custom.CustomScenePath;
+        return __result == null;
     }
 }
 
@@ -158,33 +172,6 @@ class MapIconOutlinePath
             return true;
 
         __result = custom.CustomMapIconOutlinePath;
-        return __result == null;
-    }
-}
-
-[HarmonyPatch(typeof(AncientEventModel), "RunHistoryIcon", MethodType.Getter)]
-class RunHistoryIcon
-{
-    [HarmonyPrefix]
-    static bool Custom(AncientEventModel __instance, ref Texture2D? __result)
-    {
-        if (__instance is not CustomAncientModel custom)
-            return true;
-
-        __result = custom.CustomRunHistoryIcon;
-        return __result == null;
-    }
-}
-[HarmonyPatch(typeof(AncientEventModel), "RunHistoryIconOutline", MethodType.Getter)]
-class RunHistoryIconOutline
-{
-    [HarmonyPrefix]
-    static bool Custom(AncientEventModel __instance, ref Texture2D? __result)
-    {
-        if (__instance is not CustomAncientModel custom)
-            return true;
-
-        __result = custom.CustomRunHistoryIconOutline;
         return __result == null;
     }
 }
