@@ -1,4 +1,5 @@
 ﻿using BaseLib.Utils;
+using BaseLib.Utils.NodeFactories;
 using MegaCrit.Sts2.Core.Animation;
 using MegaCrit.Sts2.Core.Bindings.MegaSpine;
 using MegaCrit.Sts2.Core.Entities.Creatures;
@@ -28,7 +29,7 @@ public class CustomPetModel: CustomMonsterModel ,ICustomModel{
     {
         string? path = (CustomVisualPath ?? VisualsPath);
         if (path == null) return null;
-        return GodotUtils.CreatureVisualsFromScene(path);
+        return NodeFactory<NCreatureVisuals>.CreateFromScene(path);
     }
 
     protected override MonsterMoveStateMachine GenerateMoveStateMachine()

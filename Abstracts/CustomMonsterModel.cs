@@ -1,4 +1,5 @@
 ﻿using BaseLib.Utils;
+using BaseLib.Utils.NodeFactories;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Animation;
@@ -30,7 +31,7 @@ public abstract class CustomMonsterModel : MonsterModel, ICustomModel
     public virtual NCreatureVisuals? CreateCustomVisuals() {
         string? path = (CustomVisualPath ?? VisualsPath);
         if (path == null) return null;
-        return GodotUtils.CreatureVisualsFromScene(path);
+        return NodeFactory<NCreatureVisuals>.CreateFromScene(path);
     }
     
     
