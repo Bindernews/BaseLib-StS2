@@ -7,6 +7,7 @@ using MegaCrit.Sts2.Core.Nodes.Combat;
 using Godot;
 using MegaCrit.Sts2.Core.Entities.Players;
 using System.Reflection;
+using BaseLib.Extensions;
 using BaseLib.Utils.NodeFactories;
 using MegaCrit.Sts2.Core.Helpers;
 
@@ -69,12 +70,6 @@ public abstract class CustomCharacterModel : CharacterModel, ICustomModel, ILoca
     public virtual string? CustomCastSfx => null;
     public virtual string? CustomDeathSfx => null;
 
-    internal string? GetCustomEnergyCounterAssetPath()
-    {
-        if (CustomEnergyCounterPath != null) return CustomEnergyCounterPath;
-        return CustomEnergyCounter != null ? SceneHelper.GetScenePath("combat/energy_counters/ironclad_energy_counter") : null;
-    }
-
     //Defaults
     public override int StartingGold => 99;
     public override float AttackAnimDelay => 0.15f;
@@ -84,13 +79,13 @@ public abstract class CustomCharacterModel : CharacterModel, ICustomModel, ILoca
 
 
     /// <summary>
-    /// By default, will convert a scene containing the necessary nodes into a NCreatureVisuals even if it is not one.
+    /// Override to provide a custom NCreatureVisuals scene.
+    /// If not overridden, an NCreatureVisuals will be generated from CustomVisualPath.
     /// </summary>
     /// <returns></returns>
     public virtual NCreatureVisuals? CreateCustomVisuals()
     {
-        if (CustomVisualPath == null) return null;
-        return NodeFactory<NCreatureVisuals>.CreateFromScene(CustomVisualPath);
+        return null;
     }
 
 
@@ -179,6 +174,9 @@ public readonly struct CustomEnergyCounter(Func<int, string> pathFunc, Color out
     public string LayerImagePath(int layer) => _getPath(layer);
 } 
 
+
+/******************** Patches ********************/
+
 [HarmonyPatch(typeof(NEnergyCounter), "OutlineColor", MethodType.Getter)]
 public class EnergyCounterOutlineColorPatch {
     private static readonly FieldInfo? PlayerProp = typeof(NEnergyCounter).GetField("_player", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -209,20 +207,11 @@ class EnergyCounterPatch {
                 PlayerField?.SetValue(__result, player);
                 return false;
             }
-            
-            /*if (model.CustomEnergyCounterPath != null)
-            {
-                __result = NodeFactory<NEnergyCounter>.CreateFromScene(model.CustomEnergyCounterPath);
-                PlayerField?.SetValue(__result, player);
-                return false;
-            }*/
         }
         catch (Exception e)
         {
             BaseLibMain.Logger.Error($"Failed to create custom energy counter for {player.Character.Id}: {e}");
         }
-
-        BaseLibMain.Logger.Info($"Player {model.GetType().Name} does not have a custom NEnergyCounter.");
 
         return true;
     }
@@ -273,65 +262,23 @@ public class ModelDbCustomCharacters
 
     public static void Register(CustomCharacterModel character)
     {
-        CustomCharacters.Add(character);
+        if (!CustomCharacters.Any(existing => existing.Id.Equals(character.Id)))
+            CustomCharacters.Add(character);
     }
 
     /// <summary>
-    /// Registers scene paths for all custom characters that haven't been registered yet.
+    /// Registers scene paths for all custom characters.
     /// Called lazily (from AddCustomPools) rather than from the constructor, because
     /// virtual properties like CustomVisualPath may depend on fields set in derived
     /// constructors that haven't run yet when Register() is called from the base ctor.
     /// </summary>
-    /// <remarks>
-    /// Tracks the last-registered paths per character so that re-registration after a
-    /// path change correctly unregisters the stale mapping first.
-    /// </remarks>
-    private static readonly Dictionary<CustomCharacterModel, (string? visualPath, string? energyPath)> _registeredPaths = [];
-
-    internal static void EnsureScenePathsRegistered()
+    private static void EnsureScenePathsRegistered()
     {
         foreach (var character in CustomCharacters)
         {
-            var visualPath = character.CustomVisualPath;
-            var energyPath = character.GetCustomEnergyCounterAssetPath();
-
-            if (_registeredPaths.TryGetValue(character, out var prev))
-            {
-                // Already registered — check if paths changed (e.g. mod update / hot reload)
-                if (prev.visualPath == visualPath && prev.energyPath == energyPath)
-                    continue;
-
-                // Unregister stale paths before re-registering
-                UnregisterCharacterPaths(prev.visualPath, prev.energyPath);
-            }
-
-            if (visualPath != null)
-                NodeFactory.RegisterSceneType<NCreatureVisuals>(visualPath);
-            if (energyPath != null)
-                NodeFactory.RegisterSceneType<NEnergyCounter>(energyPath);
-
-            _registeredPaths[character] = (visualPath, energyPath);
+            character.CustomVisualPath?.RegisterSceneForConversion<NCreatureVisuals>();
+            character.EnergyCounterPath?.RegisterSceneForConversion<NEnergyCounter>();
         }
-    }
-
-    /// <summary>
-    /// Unregisters all scene paths registered by custom characters.
-    /// Call this during cleanup or before re-initialization.
-    /// </summary>
-    public static void UnregisterAllCharacterScenePaths()
-    {
-        foreach (var (visualPath, energyPath) in _registeredPaths.Values)
-            UnregisterCharacterPaths(visualPath, energyPath);
-
-        _registeredPaths.Clear();
-    }
-
-    private static void UnregisterCharacterPaths(string? visualPath, string? energyPath)
-    {
-        if (visualPath != null)
-            NodeFactory.UnregisterSceneType(visualPath);
-        if (energyPath != null)
-            NodeFactory.UnregisterSceneType(energyPath);
     }
 }
 
@@ -441,8 +388,9 @@ class EnergyCounterPath
     {
         if (__instance is not CustomCharacterModel customChar)
             return true;
-
-        __result = customChar.GetCustomEnergyCounterAssetPath();
+        
+        __result = customChar.CustomEnergyCounterPath ?? 
+                (customChar.CustomEnergyCounter != null ? SceneHelper.GetScenePath("combat/energy_counters/ironclad_energy_counter") : null);
         return __result == null;
     }
 }

@@ -52,13 +52,17 @@ public abstract class NodeFactory<T> : NodeFactory where T : Node, new()
         if (_instance == null) throw new Exception($"No node factory found for type '{typeof(T).FullName}'");
         
         BaseLibMain.Logger.Info($"Creating {typeof(T).Name} from scene {scene.ResourcePath}");
-        var n = scene.Instantiate();
+        return _instance.CreateFromNode(scene.Instantiate());
+    }
+
+    protected override T CreateFromNode(Node n)
+    {
         if (n is T t) return t;
         
         //Attempt conversion.
         var node = new T();
 
-        _instance.ConvertScene(node, n);
+        ConvertScene(node, n);
         
         return node;
     }
@@ -118,7 +122,7 @@ public abstract class NodeFactory<T> : NodeFactory where T : Node, new()
         //Verify existence of/create named nodes
         List<INodeInfo> uniqueNames = [];
         Node placeholder = new();
-        foreach (var named in _namedNodes)
+        foreach (var named in NamedNodes)
         {
             if (named.UniqueName) uniqueNames.Add(named);
             else
@@ -168,13 +172,6 @@ public abstract class NodeFactory<T> : NodeFactory where T : Node, new()
         }
     }
 
-    internal override Node CreateAndConvert(Node source)
-    {
-        var target = new T();
-        ConvertScene(target, source);
-        return target;
-    }
-
     /// <summary>
     /// This method should convert the given node into the target type, or call the base method if unsupported.
     /// The given node should either be freed or incorporated as a child of the generated node.
@@ -212,15 +209,14 @@ public abstract class NodeFactory
     // ThreadStatic is correct here: Godot node creation is main-thread, but this also
     // makes us safe if background asset loading ever calls Instantiate.
     [ThreadStatic]
-    private static bool _isConverting;
+    private static HashSet<Node>? _convertingNodes;
 
     public static void Init()
     {
         new ControlFactory();
         new NCreatureVisualsFactory();
+        new NMerchantCharacterFactory();
         new NEnergyCounterFactory();
-
-        RunSelfTests();
     }
 
     /// <summary>
@@ -286,14 +282,14 @@ public abstract class NodeFactory
     /// When CreateFromScene also calls Instantiate internally, the postfix handles the conversion
     /// and CreateFromScene's "if (n is T t) return t" short-circuits — both paths produce the same result.
     /// </summary>
-    internal static bool TryAutoConvert(PackedScene scene, ref Node result)
+    internal static bool TryAutoConvert(PackedScene scene, ref Node? result)
     {
-        if (_isConverting || result == null) return false;
+        if (result == null || (_convertingNodes != null && _convertingNodes.Contains(result))) return false;
 
         var path = scene.ResourcePath;
         if (string.IsNullOrEmpty(path)) return false;
-        if (!_sceneTypes.TryGetValue(path, out var expectedType)) return false;
-        if (expectedType.IsAssignableFrom(result.GetType())) return false; // already the right type
+        if (!_sceneTypes.TryGetValue(path, out var expectedType)) return false; //No registered conversion
+        if (expectedType.IsInstanceOfType(result)) return false; // already the right type
 
         if (!_factories.TryGetValue(expectedType, out var factory))
         {
@@ -301,13 +297,16 @@ public abstract class NodeFactory
             return false;
         }
 
-        _isConverting = true;
+        _convertingNodes ??= [];
+        var converting = result;
+        _convertingNodes.Add(converting);
+        
         try
         {
             var sourceTypeName = result.GetType().Name;
-            var converted = factory.CreateAndConvert(result);
+            var converted = factory.CreateFromNode(result);
 
-            // Only log the first conversion per path to avoid spam (monsters get instantiated a lot)
+            // Only log the first conversion per path to avoid spam
             if (_loggedConversions.TryAdd(path, 0))
                 BaseLibMain.Logger.Info($"Auto-converted '{path}' from {sourceTypeName} to {converted.GetType().Name}");
 
@@ -320,276 +319,55 @@ public abstract class NodeFactory
             // and may QueueFree it. If conversion fails midway, the original __result is
             // corrupted (children stripped, possibly queued for deletion). We MUST NOT return
             // false and let the caller use the mangled node. Re-throw so the failure is visible.
-            BaseLibMain.Logger.Error($"Auto-conversion failed for '{path}' — the instantiated node is likely corrupt: {e}");
+            BaseLibMain.Logger.Error($"Auto-conversion failed for '{path}': {e}");
             throw;
         }
         finally
         {
-            _isConverting = false;
+            _convertingNodes.Remove(converting);
         }
     }
 
     /// <summary>
     /// Create a new instance of the factory's target type and convert the source node into it.
-    /// Used by auto-conversion to avoid calling Instantiate again.
     /// </summary>
-    internal abstract Node CreateAndConvert(Node source);
-
-    //-- Self-tests: run once at init to verify the whole postfix → factory pipeline works --
-
-    private static int _testsPassed;
-    private static int _testsFailed;
-
-    private static void RunSelfTests()
-    {
-        _testsPassed = 0;
-        _testsFailed = 0;
-
-        TestCreatureVisualsConversion();
-        TestGenericInstantiateChain();
-        TestControlConversion();
-        TestAlreadyCorrectTypePassthrough();
-        TestUnregisteredScenePassthrough();
-        TestNullAndEmptyPathValidation();
-        TestOverwriteAndUnregister();
-        TestQueryApis();
-
-        if (_testsFailed == 0)
-            BaseLibMain.Logger.Info($"All {_testsPassed} auto-conversion self-tests passed");
-        else
-            BaseLibMain.Logger.Error($"Auto-conversion self-tests: {_testsPassed} passed, {_testsFailed} FAILED");
-
-        _testsPassed = 0;
-        _testsFailed = 0;
-    }
-
-    private static void Assert(bool condition, string testName)
-    {
-        if (condition)
-            _testsPassed++;
-        else
-        {
-            _testsFailed++;
-            BaseLibMain.Logger.Error($"FAIL: {testName}");
-        }
-    }
+    protected abstract Node CreateFromNode(Node source);
 
     /// <summary>
-    /// Pack a Node2D scene with creature-like children, register it, Instantiate, expect NCreatureVisuals.
+    /// Information about an element (node) contained in a scene, used to determine if conversion is possible/how to convert.
     /// </summary>
-    private static void TestCreatureVisualsConversion()
-    {
-        const string path = "res://baselib_test/creature.tscn";
-        try
-        {
-            var root = new Node2D { Name = "TestCreature" };
-            AddOwnedChild(root, new Sprite2D { Name = "Visuals", UniqueNameInOwner = true });
-            AddOwnedChild(root, new Control { Name = "Bounds", Size = new Vector2(200, 240), Position = new Vector2(-100, -240) });
-            AddOwnedChild(root, new Marker2D { Name = "IntentPos" });
-            AddOwnedChild(root, new Marker2D { Name = "CenterPos", UniqueNameInOwner = true });
-
-            var scene = new PackedScene();
-            scene.Pack(root);
-            root.QueueFree();
-            scene.ResourcePath = path;
-
-            _sceneTypes[path] = typeof(MegaCrit.Sts2.Core.Nodes.Combat.NCreatureVisuals);
-
-            var result = scene.Instantiate(PackedScene.GenEditState.Disabled);
-            Assert(result is MegaCrit.Sts2.Core.Nodes.Combat.NCreatureVisuals, "NCreatureVisuals conversion");
-            result.QueueFree();
-        }
-        catch (Exception e) { Assert(false, $"NCreatureVisuals conversion (threw: {e.Message})"); }
-        finally { _sceneTypes.TryRemove(path, out _); _loggedConversions.TryRemove(path, out _); }
-    }
-
-    /// <summary>
-    /// Pack a Node2D, register for Control, Instantiate, expect Control.
-    /// </summary>
-    private static void TestControlConversion()
-    {
-        const string path = "res://baselib_test/control.tscn";
-        try
-        {
-            var root = new Node2D { Name = "TestControl" };
-
-            var scene = new PackedScene();
-            scene.Pack(root);
-            root.QueueFree();
-            scene.ResourcePath = path;
-
-            _sceneTypes[path] = typeof(Control);
-
-            var result = scene.Instantiate(PackedScene.GenEditState.Disabled);
-            Assert(result is Control, "Control conversion");
-            result.QueueFree();
-        }
-        catch (Exception e) { Assert(false, $"Control conversion (threw: {e.Message})"); }
-        finally { _sceneTypes.TryRemove(path, out _); _loggedConversions.TryRemove(path, out _); }
-    }
-
-    /// <summary>
-    /// Register a scene whose root is already the expected type — should pass through with no conversion.
-    /// </summary>
-    private static void TestAlreadyCorrectTypePassthrough()
-    {
-        const string path = "res://baselib_test/passthrough.tscn";
-        try
-        {
-            var root = new Control { Name = "AlreadyControl" };
-
-            var scene = new PackedScene();
-            scene.Pack(root);
-            root.QueueFree();
-            scene.ResourcePath = path;
-
-            _sceneTypes[path] = typeof(Control);
-
-            var result = scene.Instantiate(PackedScene.GenEditState.Disabled);
-            // Should still be Control (no conversion needed), and specifically should NOT
-            // have gone through CreateAndConvert (it would still be Control either way,
-            // but IsAssignableFrom should short-circuit).
-            Assert(result is Control, "Already-correct-type passthrough");
-            result.QueueFree();
-        }
-        catch (Exception e) { Assert(false, $"Already-correct-type passthrough (threw: {e.Message})"); }
-        finally { _sceneTypes.TryRemove(path, out _); }
-    }
-
-    /// <summary>
-    /// Instantiate a scene that is NOT registered — should return the raw node unchanged.
-    /// </summary>
-    private static void TestUnregisteredScenePassthrough()
-    {
-        const string path = "res://baselib_test/unregistered.tscn";
-        try
-        {
-            var root = new Node2D { Name = "Unregistered" };
-
-            var scene = new PackedScene();
-            scene.Pack(root);
-            root.QueueFree();
-            scene.ResourcePath = path;
-            // Deliberately NOT registering this path
-
-            var result = scene.Instantiate(PackedScene.GenEditState.Disabled);
-            Assert(result is Node2D, "Unregistered scene passthrough");
-            Assert(result.GetType() == typeof(Node2D), "Unregistered scene is exactly Node2D");
-            result.QueueFree();
-        }
-        catch (Exception e) { Assert(false, $"Unregistered scene passthrough (threw: {e.Message})"); }
-    }
-
-    /// <summary>
-    /// THE critical test: call the generic Instantiate&lt;NCreatureVisuals&gt;() which is what game
-    /// code actually uses. Verifies the postfix on the non-generic Instantiate fires and converts
-    /// the node BEFORE the (T)(object) cast in the generic method.
-    /// If this test passes, the entire approach works end-to-end.
-    /// </summary>
-    private static void TestGenericInstantiateChain()
-    {
-        const string path = "res://baselib_test/generic_chain.tscn";
-        try
-        {
-            var root = new Node2D { Name = "GenericChainTest" };
-            AddOwnedChild(root, new Sprite2D { Name = "Visuals", UniqueNameInOwner = true });
-            AddOwnedChild(root, new Control { Name = "Bounds", Size = new Vector2(200, 240), Position = new Vector2(-100, -240) });
-            AddOwnedChild(root, new Marker2D { Name = "IntentPos" });
-            AddOwnedChild(root, new Marker2D { Name = "CenterPos", UniqueNameInOwner = true });
-
-            var scene = new PackedScene();
-            scene.Pack(root);
-            root.QueueFree();
-            scene.ResourcePath = path;
-
-            _sceneTypes[path] = typeof(MegaCrit.Sts2.Core.Nodes.Combat.NCreatureVisuals);
-
-            // This is the real deal — Instantiate<T> calls Instantiate() then casts to T.
-            // Our postfix on Instantiate() must convert BEFORE the cast, or this throws InvalidCastException.
-            var result = scene.Instantiate<MegaCrit.Sts2.Core.Nodes.Combat.NCreatureVisuals>(PackedScene.GenEditState.Disabled);
-            Assert(result is MegaCrit.Sts2.Core.Nodes.Combat.NCreatureVisuals, "Generic Instantiate<NCreatureVisuals> chain");
-            result.QueueFree();
-        }
-        catch (InvalidCastException)
-        {
-            Assert(false, "Generic Instantiate<NCreatureVisuals> chain (InvalidCastException — postfix didn't fire before cast!)");
-        }
-        catch (Exception e)
-        {
-            Assert(false, $"Generic Instantiate<NCreatureVisuals> chain (threw: {e.Message})");
-        }
-        finally { _sceneTypes.TryRemove(path, out _); _loggedConversions.TryRemove(path, out _); }
-    }
-
-    /// <summary>
-    /// Verify that null/empty paths are rejected by RegisterSceneType.
-    /// </summary>
-    private static void TestNullAndEmptyPathValidation()
-    {
-        var countBefore = _sceneTypes.Count;
-        RegisterSceneType<Control>(null!);
-        RegisterSceneType<Control>("");
-        RegisterSceneType<Control>("   ");
-        Assert(_sceneTypes.Count == countBefore, "Null/empty/whitespace paths rejected");
-    }
-
-    /// <summary>
-    /// Verify overwrite and unregister work correctly.
-    /// </summary>
-    private static void TestOverwriteAndUnregister()
-    {
-        const string path = "res://baselib_test/overwrite.tscn";
-        try
-        {
-            // Register for Control, then overwrite to NCreatureVisuals
-            _sceneTypes[path] = typeof(Control);
-            RegisterSceneType<MegaCrit.Sts2.Core.Nodes.Combat.NCreatureVisuals>(path);
-            Assert(_sceneTypes.TryGetValue(path, out var t) && t == typeof(MegaCrit.Sts2.Core.Nodes.Combat.NCreatureVisuals),
-                "Overwrite registration");
-
-            // Unregister
-            UnregisterSceneType(path);
-            Assert(!_sceneTypes.ContainsKey(path), "Unregister removes path");
-
-            // Unregister again (should not throw)
-            UnregisterSceneType(path);
-            Assert(true, "Double unregister is safe");
-        }
-        catch (Exception e) { Assert(false, $"Overwrite/unregister (threw: {e.Message})"); }
-        finally { _sceneTypes.TryRemove(path, out _); }
-    }
-
-    /// <summary>
-    /// Verify the public query APIs work.
-    /// </summary>
-    private static void TestQueryApis()
-    {
-        Assert(HasFactory<MegaCrit.Sts2.Core.Nodes.Combat.NCreatureVisuals>(), "HasFactory<NCreatureVisuals>");
-        Assert(HasFactory<Control>(), "HasFactory<Control>");
-        Assert(!HasFactory<Sprite2D>(), "!HasFactory<Sprite2D> (no factory registered)");
-
-        const string path = "res://baselib_test/query_test.tscn";
-        _sceneTypes[path] = typeof(Control);
-        Assert(IsRegistered(path), "IsRegistered for known path");
-        Assert(!IsRegistered("res://nonexistent/path.tscn"), "!IsRegistered for unknown path");
-        Assert(!IsRegistered(""), "!IsRegistered for empty path");
-        Assert(!IsRegistered(null!), "!IsRegistered for null path");
-        _sceneTypes.TryRemove(path, out _);
-    }
-
-    private static void AddOwnedChild(Node parent, Node child)
-    {
-        parent.AddChild(child);
-        child.Owner = parent;
-    }
-
     protected interface INodeInfo
     {
+        /// <summary>
+        /// The node's expected path from the root of the scene.
+        /// </summary>
         string Path { get; }
+        /// <summary>
+        /// Whether the node MUST be accessible through a unique name.
+        /// </summary>
         bool UniqueName { get; }
+        /// <summary>
+        /// Whether the node should be made accessible through a unique name. Can be true even if node does not require
+        /// a unique name.
+        /// </summary>
         bool MakeNameUnique { get; }
+        /// <summary>
+        /// Returns true if the node is a valid type to be used as this element of the scene.
+        /// </summary>
+        /// <param name="node"></param>
+        /// <returns></returns>
         bool IsValidType(Node node);
+        /// <summary>
+        /// Returns true if the given node is a valid type, this node requires a unique name,
+        /// and the node is named correctly.
+        /// </summary>
+        /// <param name="n"></param>
+        /// <returns></returns>
         bool IsValidUnique(Node n);
+        /// <summary>
+        /// The type that this node should have.
+        /// </summary>
+        /// <returns></returns>
         Type NodeType();
     }
     protected record NodeInfo<T>(string Path, bool MakeNameUnique = true) : INodeInfo
@@ -618,7 +396,7 @@ public abstract class NodeFactory
     /// Nodes that will be looked for in the generated type.
     /// Not all of these are necessarily required.
     /// </summary>
-    protected readonly List<INodeInfo> _namedNodes;
+    protected readonly List<INodeInfo> NamedNodes;
     
     /// <summary>
     /// If true, then will simply add entire root node of a scene as child of a new instance of target scene type.
@@ -628,11 +406,16 @@ public abstract class NodeFactory
     
     protected NodeFactory(IEnumerable<INodeInfo> namedNodes)
     {
-        _namedNodes = namedNodes.ToList();
-        FlexibleStructure = _namedNodes.All(info => info.UniqueName);
+        NamedNodes = namedNodes.ToList();
+        FlexibleStructure = NamedNodes.All(info => info.UniqueName);
     }
     
     
+    /// <summary>
+    /// Copies common positional/input properties of a control.
+    /// </summary>
+    /// <param name="target"></param>
+    /// <param name="source"></param>
     protected static void CopyControlProperties(Control target, Control source)
     {
         CopyCanvasItemProperties(target, source);
@@ -655,6 +438,11 @@ public abstract class NodeFactory
         target.ClipContents = source.ClipContents;
     }
 
+    /// <summary>
+    /// Copies common positional/input/visual properties of a CanvasItem.
+    /// </summary>
+    /// <param name="target"></param>
+    /// <param name="source"></param>
     protected static void CopyCanvasItemProperties(CanvasItem target, CanvasItem source)
     {
         target.Visible = source.Visible;
@@ -679,6 +467,11 @@ public abstract class NodeFactory
         }
     }
 
+    /// <summary>
+    /// Sets a child node and all its children to be owned by a target node for the purposes of unique name access.
+    /// </summary>
+    /// <param name="target"></param>
+    /// <param name="child"></param>
     protected static void SetChildrenOwner(Node target, Node child)
     {
         foreach (var grandchild in child.GetChildren())

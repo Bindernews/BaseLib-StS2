@@ -16,16 +16,12 @@ namespace BaseLib.Patches.Content;
 /// Uses TargetMethod to avoid ambiguity between the generic and non-generic overloads.
 /// </summary>
 [HarmonyPatch]
-static class InstantiatePatch
+static class SceneConversionPatch
 {
     static MethodBase TargetMethod()
     {
         // Explicitly pick the non-generic Instantiate(GenEditState), not Instantiate<T>(GenEditState)
-        var method = typeof(PackedScene).GetMethods(BindingFlags.Public | BindingFlags.Instance)
-            .FirstOrDefault(m => m.Name == "Instantiate"
-                        && !m.IsGenericMethodDefinition
-                        && m.GetParameters().Length == 1
-                        && m.GetParameters()[0].ParameterType == typeof(PackedScene.GenEditState));
+        var method = typeof(PackedScene).GetMethod("Instantiate", 0, []);
 
         if (method == null)
             throw new InvalidOperationException(
@@ -36,7 +32,7 @@ static class InstantiatePatch
     }
 
     [HarmonyPostfix]
-    static void Postfix(PackedScene __instance, ref Node __result)
+    static void Postfix(PackedScene __instance, ref Node? __result)
     {
         NodeFactory.TryAutoConvert(__instance, ref __result);
     }
