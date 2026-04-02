@@ -271,6 +271,7 @@ public class SimpleModConfig : ModConfig
             var visibleWhen = member.GetCustomAttribute<ConfigVisibleWhenAttribute>();
             // Setting up the reference to the divider linked to this config so we can set its visibility
             Control? associatedDivider = null;
+            Action? updateVisibility = null;
 
             // Create a section header if this property starts a new section
             var sectionName = member.GetCustomAttribute<ConfigSectionAttribute>()?.Name;
@@ -298,7 +299,7 @@ public class SimpleModConfig : ModConfig
                     var watchedProp = GetType().GetProperty(visibleWhen.WatchedPropertyName);
                     if (watchedProp != null)
                     {
-                        void UpdateVisibility()
+                        updateVisibility = () =>
                         {
                             var currentVal = watchedProp.GetValue(null);
                             var shouldBeVisible = Equals(currentVal?.ToString(), visibleWhen.ExpectedValue?.ToString());
@@ -309,11 +310,11 @@ public class SimpleModConfig : ModConfig
                             newRow.Visible = shouldBeVisible;
                             if (associatedDivider != null)
                                 associatedDivider.Visible = shouldBeVisible;
-                        }
+                        };
                         
-                        UpdateVisibility();
-                        ConfigChanged += (_, _) => UpdateVisibility();
-                        OnConfigReloaded += UpdateVisibility;
+                        updateVisibility();
+                        ConfigChanged += (_, _) => updateVisibility();
+                        OnConfigReloaded += updateVisibility;
                     }
                 }
 
@@ -346,6 +347,8 @@ public class SimpleModConfig : ModConfig
                 // If the row above has conditional visibility, link the divider to it
                 if (visibleWhen != null)
                     associatedDivider = divider;
+
+                updateVisibility?.Invoke();
             }
         }
 
