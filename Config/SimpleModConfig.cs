@@ -357,9 +357,8 @@ public class SimpleModConfig : ModConfig
                 // If the row above has conditional visibility, link the divider to it
                 if (visibleWhen != null)
                     associatedDivider = divider;
-
-                updateVisibility?.Invoke();
             }
+            updateVisibility?.Invoke();
         }
 
         return;
