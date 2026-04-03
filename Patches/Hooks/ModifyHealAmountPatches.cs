@@ -40,9 +40,7 @@ public static class ModifyHealAmountPatches
                 new CodeInstruction(OpCodes.Dup),
                 CodeInstruction.LoadArgument(0),
                 new CodeInstruction(OpCodes.Stfld, amountField)
-            ])
-            .PrintResult(BaseLibMain.Logger)
-            .PrintLog(BaseLibMain.Logger);
+            ]);
     }
 
     public static decimal ModifyHeal(decimal amount, Creature creature)

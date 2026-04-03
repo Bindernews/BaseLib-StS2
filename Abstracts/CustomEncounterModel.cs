@@ -1,4 +1,5 @@
-﻿using BaseLib.Utils;
+﻿using BaseLib.Patches.Content;
+using BaseLib.Utils;
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Models;
@@ -12,16 +13,24 @@ public abstract class CustomEncounterModel : EncounterModel, ICustomModel
     public override RoomType RoomType { get; }
     private BackgroundAssets? _customBackgroundAssets;
     
-    protected CustomEncounterModel(RoomType roomType)
+    protected CustomEncounterModel(RoomType roomType, bool autoAdd = true)
     {
         if (roomType is not (RoomType.Monster or RoomType.Elite or RoomType.Boss))
         {
             BaseLibMain.Logger.Warn($"Encounter {Id.Entry} sets unexpected room type {roomType}");
         }
         RoomType = roomType;
+
+        if (autoAdd)
+        {
+            CustomContentDictionary.AddEncounter(this);
+        }
     }
+
+    public abstract bool IsValidForAct(ActModel act);
     
     //Todo - Support non-event:/ bgm? needs audio stuff
+    //Automatically add to encounter pool
     
     /*
      Required:
