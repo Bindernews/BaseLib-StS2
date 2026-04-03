@@ -20,7 +20,7 @@ public static class DynamicVarExtensions
 
     public static DynamicVar WithUpgrade(this DynamicVar dynamicVar, decimal upgradeValue)
     {
-        DynamicVarUpgrades[dynamicVar] = upgradeValue;
+        if (upgradeValue != 0) DynamicVarUpgrades[dynamicVar] = upgradeValue;
         return dynamicVar;
     }
 
