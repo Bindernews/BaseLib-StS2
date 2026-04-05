@@ -393,9 +393,6 @@ public static class HealthBarForecastPatch
     
     private static bool IsDoomLethalAfterRight(NHealthBar healthBar, Creature creature)
     {
-        if (!creature.HasPower<DoomPower>())
-            return false;
-
         var doomAmount = creature.GetPowerAmount<DoomPower>();
         if (doomAmount <= 0)
             return false;
@@ -421,7 +418,7 @@ public static class HealthBarForecastPatch
         }
 
         var doomAmount = creature.GetPowerAmount<DoomPower>();
-        if (doomAmount > 0 && creature.HasPower<DoomPower>())
+        if (doomAmount > 0)
             candidates.Add(new(doomAmount, DoomLethalTextColor, 0, long.MinValue / 4));
 
         if (candidates.Count == 0)
