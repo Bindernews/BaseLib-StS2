@@ -33,6 +33,7 @@
         <LocalizeTemplates>false</LocalizeTemplates>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <DocumentationFile>$(MSBuildProjectDirectory)/$(OutputPath)$(MSBuildProjectName).xml</DocumentationFile>
     </PropertyGroup>
 
     <!-- Sts2Path / Sts2DataDir: Sts2PathDiscovery.props (+ optional local.props). GodotPath in local.props for .pck export. -->
